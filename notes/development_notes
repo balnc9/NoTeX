@@ -1,0 +1,138 @@
+NoTeX Development Notes
+
+
+1: BACKEND 
+The backend will communicate between the frontend, backend, and neovim configuration files.
+For example, when a user tries to login, the frontend will call the API /login, which will send an
+	HTTP request with the user/pass information to the backend, which in this case would be checking
+	if the user/password combo exists in the DB of users, and if valid, it will generate a JWT token
+	and respond to the frontend with that using the API. Now, this JWT will be stored for future
+	actions like AI summaries, viewing dashboards, etc. So the first action (logging in) will GENERATE
+	the JWT token, whereas the subsequent actions will VERIFY the JWT token.
+
+
+The backend should handle some basic functions
+- Authentication : Users can register/login and receive JWT tokens (JSON Web Tokens)
+- Note Management : Backend should store LaTeX content, metadata, and manage version control
+- PDF Compilation : Convert LaTeX -> PDF Automatically!
+- File Storage : Save compiled PDF's somewhere accessible (available for set by user)
+- API Endpoints : RESTful interface for frontend and CLI (command line interface)
+
+Backend Structure
+Separation of concerns,each folder has one job.
+		/backend/app/api/ : ROUTE LAYER-Route handlers (the actual endpoints), how users interact with our app
+		/backend/app/models/ : DATABASE LAYER: Database table definitions, what data looks like in the DB
+		/backend/app/schemas/ : API LAYER - API request/response formats, what data looks like over the internet
+		/backend/app/services/ : BUSINESS LOGIC LAYER-backend business logic (separate from API layer), what our app does
+
+
+Why each tool?
+FastAPI - The Communicator (API Framework)
+	The API will communicate between the frontend, backend, and neovim configuration files.
+		For example, when a user tries to login, the frontend will call the API /login, which will send an
+			HTTP request with the user/pass information to the backend, which in this case would be checking
+			if the user/password combo exists in the DB of users, and if valid, it will generate a JWT token
+			and respond to the frontend with that using the API. Now, this JWT will be stored for future
+			actions like AI summaries, viewing dashboards, etc. So the first action (logging in) will GENERATE
+			the JWT token, whereas the subsequent actions will VERIFY the JWT token.
+	FastAPI creates web APIs that can handle HTTP requests
+		- has automatic documentation (builds Swagger docs for free)
+		- Type safety - catches errors before they happen
+		- Modern Python - uses async/wait for increased performance
+		- JSON validation - automatically validates requests
+		- Easy JWT authentication, standardized, robust, and industry grade
+
+SQLAlchemy - The SQL Translator
+	SQLAlchemy is the most popular Python library for working with databases. It allows us to work with
+		databases (PostgreSQL, MySQL, etc.) using Python classes and objects, rather than writing raw SQL
+		by hand each time.
+		It's almost like a translator. Heres the flow. You write Python code, SQLAlchemy translates it into 
+		raw SQL commands for the database, the database responds with rows or tuples of data, and SQLAlchemy
+		gives you Python objects back.
+		For example, instead of writing something like:
+									SELECT * FROM notes WHERE user_id = 1;
+									You can use SQLAlchemy to write:
+									db.query(Note).filter(Note.user_id == 1).all()
+		So it's quite convenient! It's sort of like a QOL extension to make things more standardized.
+		SQLAlchemy is also cross-database. It works with PostgreSQL, MySQL, SQLite, etc. All you have to do
+			is change your connection string, no rewriting queries. 
+		ORM (Object Relational Mapper) this allows you to represent SQL tables as Python classes, so
+			each row = a Python object which is super useful for coding in python and table manipulation, etc.
+	HOW IS IT USED IN THIS PROJECT?
+	We need to store things like Users (username, pass hash, email), Notes (LaTeX content, timestamps, user owner),
+		Versions(history of edits), maybe AI summaries, etc. 
+	With SQLAlchemy, we can define these as CLASSES in python! When a user uploads a note, create a Note object+save it.
+	When fetching dashboard notes -> query Note objects and return them with FastAPI.
+
+	Here's how FastAPI + SQLAlchemy work together!
+		Frontend asks API "give me all my notes"
+		FastAPI receives request /notes
+		SQLAlchemy fetches the corresponding Note table in PostgreSQL
+		Database returns rows
+		SQLAlchemy converts those rows into Note objects! 
+		FastAPI serializes them into JSON* and sends them back to the frontend.
+	Basically, without SQLAlchemy, i'd have to write raw SQL everywhere -> its just messy
+	With it, I can cleanly write Python!
+
+JWT (JSON Web Tokens) - The ID Card
+	a JWT is a compact, signed token that proves a user is authenticated, think of like a Digital ID Card you carry 
+ 		after logging in.
+	My system will have multiple ends (backend, frontend, CLI, neovim plugin), JWT lets all of them authenticate without
+		having to re-check username/password. The backend just checks the JWT, and runs the action if valid.
+
+Docker - Containerization - The Packager
+	Docker is a tool to package apps into containers so it can be portable. Each container has everything that you app
+		needs (code, dependencies, tools). This allows the app to work the same on any computer or cloud!
+	It packages the FastAPI backend into a container, and runs PostgreSQL in its own container, and uses 
+		docker-compose.yml to link them. For example:
+				dockerfile
+				FROM python:3.11
+				
+				WORKDIR /app
+				COPY requirements.text .
+				RUN pip install -r requirements.txt
+
+				COPY . .
+
+				CMD ["uvicorn","main:app","--host","0.0.0.0","--port","8000"]
+
+Pydantic - The Validator
+	Pydantic is a Python library for data validation and parsing. It works great with FastAPI!
+	Essentially, it lets us define "schema" or rules for what data should look like, like a spellchecker
+	 for data! It makes sure that inputs/outputs are valid before running actions and logic
+	You need this because APIs can receive faulty data from untrusted sources (frontend/CLI). Pydantic
+		ensures that bad/missing data doesn't fully crash everything. 
+	For example: if /notes expects a name and title, Pydantic will validate that before you touch the DB
+	How it works in this project:
+	 - Defines request models (what the API expects)
+	 - Defines response modles (what the API sends back)
+	 - FastAPI can automatically enforce these rules!
+	
+	Example in FastAPI:
+		from pydantic import BaseModel
+
+		class NoteCreate(BaseModel):
+			title: str
+			content: str
+
+		@app.post("/notes")
+		def create_note(note: NoteCreate):
+			return {"msg" : f"Created note: {note.title}"}
+
+So this is how backend data requests should flow:
+	1. User sends HTTP Request:
+	2. Pydantic validates request
+	3. API Layer receives validated data
+	4. Service layer does the work
+	5. Background job compiles the PDF
+	6. Response sent back
+and this is how Authentication should flow:
+	1. User registers
+	2. Server processes
+	3. User logs in
+	4. Server verifies
+	5. User gets JWT
+	6. Future requests are simply JWT checked
+
+
+

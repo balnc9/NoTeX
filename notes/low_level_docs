@@ -1,0 +1,25 @@
+LOW LEVEL DOCUMENTATION
+Just some notes to help me fully understand implemetnation
+
+FastAPI implementation:
+first, create the FastAPI instance
+	app = FastAPI(
+		title, description, version, etc. = ????
+	)
+
+	This creates you web server - 'app' is your entire backend!
+	This will auto-generate documentation. FastAPI creates beautiful API docs for free!
+	Sets metadata - title/description should appear in the docs now!
+
+Create API endpoints
+	@app.get("/")                # HTTP GET request to root URL
+	async def read_root():       # Function name doesnt matter, just for good design
+		return { "message..." }    # FastAPI automatically converts to JSON
+	
+	@app.get("/path") - this is a decorator that tells FastAPI "when someone visits /path, run this"
+	async def - Non blocking function (server can simultaneously handle other requests whle this runs)
+	Return dict/object - FastAPI automatically converts to JSON response
+
+
+Database setup
+	
