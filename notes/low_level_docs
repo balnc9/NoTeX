@@ -22,4 +22,88 @@ Create API endpoints
 
 
 Database setup
+ Everything needs data storage. 
+ - Authentication requires users, so this should come before JWT setup.
+ - Notes need persistent storage (currently, they disappear when server restarts)
+
+ So we need to build DB tables:
+
+ users(id (PK), email (unique), hashed_pw, created_at)
+ notes(id (PK), user_id (FK), title, latex_content, pdf_url, created_at, updated_at)
+
+ SQLAlchemy models (example for user)
+ class User(Base):
+ 		__tablename__ = "users"
+		id = Column(Integer, primary_key=True)
+		email = Column(String, unique=True)
+		# Relationship: user.notes...
+
+	
+ So this should be our work flow
+ 1. DB Connection (database.py)
+ 		- Setup SQLAlchemy engine
+		- Create DB session management
+		- Configure SQLite for development
+ 2. DB Models (models/user.py, models/note.py
+		- Define User table structure
+		- Define Note table structure
+		- Setup relationships between the tables
+ 3. Pydantic Schemas (schemas/user.py, schemas/note.py
+ 		- API request/response Standard formats
+		- Data validation rules
+		- Hide sensitive fields (passwords, etc)
+ 4. Database Migration
+ 		- Use Alembric to create tables
+		- Generate migration files
+		- Apply changes to databse
+ 5. Test DB Operations
+ 		- Create test users
+		- Create test notes
+- Query and update data
+
+
+
+Side note: JSON = JavaScript Object Notation
+ - A lightweight way to represent data.
+ - When the frontend (React, CLI, etc) talks to the backend (FastAPI), they need a common language.
+ 		- the frontend might be written in JavaScript, backend in python, DB in SQL,
+		- So JSON is the common language, or the "translator"
+		- Everyone can understand JSON
+So now, move onto the DB setup.
+
+For DB, using SQLite for development.
+- SQLite is file based, easy to backup and delete
+- No setup is required!
+- Perfect for learning SQL
+- Scalable, easy to upgrade to something like PostgreSQL for production
+So onto building database.py
+Step 1: Understanding DB Connections
+It is almost like connecting to wifi.
+		Connection String = WiFi password
+		Engine = Your WiFi adapter
+			- It is the connection manager
+			engine = create_engine("sqlite:///./notes.db")
+				- this says "connect to SQLite file called notes.db"
+		Session = Your current internet session
+			session = SessionLocal()
+			one session per request - keeps data consistent
+		SessionLocal (The Session Factory)
+		this is like a factory that creates new browser sessions
+		SessionLocal = sessionmaker(bind=engine)
+					Creates fresh sessions when you need them.
+
+		Base class is the table blueprint. ALL tables inherit traits from this
+		Base = declarative_base() says "ALL my furniture follows this design pattern"
+
+ DB's allow for simultaneous editing and accessing!
+ Setup:
+
+ DB URL's
+ - Databases URLs are similar to website URLs
+ 		- sqlite:///./notes.db - Local SQLite file
+		- postgresql://user:pass@localhost/mydb - PostgreSQL server
+ - ./notes.db
+ 		- Single file
+		- No server needed
+		- Same directory as your code
 	
