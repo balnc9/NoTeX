@@ -24,13 +24,6 @@ class User(Base):
     
     # Primary Key - unique identifier for each user
     id = Column(Integer, primary_key=True, index=True)
-    # What this does:
-    # - Integer: stores numbers (1, 2, 3, 4...)
-    # - primary_key=True: makes this the unique identifier
-    # - index=True: creates database index for fast lookups
-    # SQLite auto-increments this: first user gets 1, second gets 2, etc.
-    
-    # Email - user's login credential  
     email = Column(String, unique=True, index=True)
     # What this does:
     # - String: stores text (up to default length limit)
