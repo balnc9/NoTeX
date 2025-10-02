@@ -1,42 +1,60 @@
-# This is the entry point, where FastAPI starts
-from fastapi import FastAPI 
+# LaTeX Note Platform - Main FastAPI Application
+
+from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
+
+# Import our API routers
+from app.api import auth, notes
 
 # Create the FastAPI application instance
 app = FastAPI(
-    title="LaTeX Note Platform",
-    description="A cloud-backed LaTeX note-taking platform",
-    version="1.0.0"
+    title="LaTeX Note Platform API",
+    description="A cloud-backed LaTeX note-taking platform with user authentication",
+    version="1.0.0",
+    docs_url="/docs",
+    redoc_url="/redoc"
 )
 
-# Root endpoint - this will be our "Hello World"
+# Add CORS middleware for frontend integration
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],  # In production, specify exact origins
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+# Include API routers
+app.include_router(auth.router)
+app.include_router(notes.router)
+
+# Root endpoint - API status
 @app.get("/")
 async def read_root():
     return {
-        "message": "Welcome to the LaTeX Note Platform!",
+        "message": "LaTeX Note Platform API",
         "status": "running",
-        "version": "1.0.0"
+        "version": "1.0.0",
+        "endpoints": {
+            "docs": "/docs",
+            "auth": "/auth",
+            "notes": "/notes"
+        }
     }
 
-# Health check endpoint - useful for monitoring
+# Health check endpoint
 @app.get("/health")
 async def health_check():
-    return {"status": "healthy"}
+    return {"status": "healthy", "database": "connected"}
 
-# Simple test endpoint that accepts parameters
-@app.get("/hello/{name}")
-async def say_hello(name: str):
-    return {"message": f"Hello, {name}! Ready to take some LaTeX notes?"}
-
-# POST endpoint - accepts JSON data in request body
+# Keep the original LaTeX validator for testing
 @app.post("/validate-latex")
 async def validate_latex_snippet(data: dict):
     """
-    Takes LaTeX code and does basic validation
-    This is a preview of what we'll build for real LaTeX processing!
+    Basic LaTeX validation - for testing purposes
     """
     latex_code = data.get("latex", "")
     
-    # Basic validation (we'll make this much more sophisticated later)
     if not latex_code:
         return {"valid": False, "error": "No LaTeX code provided"}
     
@@ -57,6 +75,6 @@ async def validate_latex_snippet(data: dict):
         "message": "LaTeX looks good!",
         "stats": {
             "length": len(latex_code),
-            "math_expressions": math_count // 2  # Pairs of $...$
+            "math_expressions": math_count // 2
         }
     }
